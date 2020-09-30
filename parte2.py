@@ -90,7 +90,7 @@ def residuo_and_psi_w_max(w, psi, n, h, omega, Re, p, r):
             residuo_w[i-1, j-1] = abs(((1/Re)*((w[p][i, j+1] - (2 * w[p][i,j]) + w[p][i, j-1])/(h**2)))\
                               + ((1/Re)*((w[p][i+1, j] - (2 * w[p][i,j]) + w[p][i-1, j])/(h**2)))\
                               - (((psi[r][i, j+1] - psi[r][i, j-1])/(2*h))*((w[p][i+1, j] - w[p][i-1, j])/(2*h)))\
-                              + (((psi[r][i+1, j] - psi[p][i-1, j])/(2*h))*((w[p][i, j+1] - w[p][i, j-1])/(2*h))))
+                              + (((psi[r][i+1, j] - psi[r][i-1, j])/(2*h))*((w[p][i, j+1] - w[p][i, j-1])/(2*h))))
     
             if psi[r][i, j] > max_psi:
                 
@@ -122,7 +122,7 @@ def solve_x_line(j, w, psi, omega, n, Re, h, dt, sigma, p, q, r, s, variable = '
             
             a.append(-sigma)
             
-            d.append( ((dt/2)*w[q][i,j])\
+            d.append( ((dt/2)*w[p][i,j])\
                      + ((1-(2*sigma))*psi[s][i,j])\
                      + (sigma*(psi[s][i, j+1] + psi[s][i, j-1])))
             
@@ -151,7 +151,10 @@ def solve_x_line(j, w, psi, omega, n, Re, h, dt, sigma, p, q, r, s, variable = '
     if variable == 'w':
     
         #contorno
+        py = Re * ( (psi[r][1, j+1] - psi[r][1, j-1]) / 4 )
         d[0] = d[0] + ((sigma * (py + 1)) *  w[p][0, j])
+        
+        py = Re * ( (psi[r][n-2, j+1] - psi[r][n-2, j-1]) / 4 )
         d[-1] = d[-1] - (sigma * (py - 1) * w[p][-1, j])
     
     x_line = np.array(TDMAsolver(a, b, c, d))
@@ -170,7 +173,7 @@ def solve_y_collum(i, w, psi, omega, n, Re, h, dt, sigma, p, q, r, s, variable =
             
             a.append(-sigma)
             
-            d.append( ((dt/2)*w[q][i,j])\
+            d.append( ((dt/2)*w[p][i,j])\
                      + ((1-(2*sigma))*psi[s][i,j])\
                      + (sigma*(psi[s][i+1, j] + psi[s][i-1, j])))
             
@@ -197,9 +200,13 @@ def solve_y_collum(i, w, psi, omega, n, Re, h, dt, sigma, p, q, r, s, variable =
         d[-1] = d[-1] + (sigma * psi[r][j, -1])     
         
     if variable == 'w':
-    
+        
         #contorno
+        px = Re * ( (psi[r][i+1, 1] - psi[r][i-1, 1]) / 4 )
         d[0] = d[0] - ((sigma * (px - 1)) *  w[p][i, 0])
+        
+        #contorno
+        px = Re * ( (psi[r][i+1, n-2] - psi[r][i-1, n-2]) / 4 )
         d[-1] = d[-1] + ((sigma * (px + 1)) * w[p][i, -1])
     
     y_collum = np.array(TDMAsolver(a, b, c, d))
@@ -213,10 +220,6 @@ def solver(omega, n, Re, H_FUNC = lambda h: h**2, tol = 1e-6, residuo_it = 1, ma
     dt = H_FUNC(h)
         
     sigma = dt / (2*(h**2))
-    
-    print('n: ' + str(n))
-    print('h: ' + str(h))
-    print('\n\n\n')
         
     #solucao inicial para vorticidade
     w = [np.zeros((n, n)), np.zeros((n, n))]
@@ -248,15 +251,19 @@ def solver(omega, n, Re, H_FUNC = lambda h: h**2, tol = 1e-6, residuo_it = 1, ma
         
         #aplicando contorno i, 0
         w[p][:, 0] = -2*(psi[r][:, 1]/(h**2))
+        w[q][:, 0] = -2*(psi[r][:, 1]/(h**2))
         
         #aplicando contorno I, j
         w[p][-1, :] = -2*(psi[r][-2, :]/(h**2))
+        w[q][-1, :] = -2*(psi[r][-2, :]/(h**2))
         
         #aplicando contorno 0, j
         w[p][0, :] = -2*(psi[r][1, :]/(h**2))
+        w[q][0, :] = -2*(psi[r][1, :]/(h**2))
         
         #aplicando contorno i, J
         w[p][:, -1] = -2*(psi[r][:, -2]/(h**2)) - (2/h)
+        w[q][:, -1] = -2*(psi[r][:, -2]/(h**2)) - (2/h)
         
         p, q = q, p
         for j in range(1, n - 1):
@@ -303,7 +310,7 @@ def main():
     
     residuo_it = 25
     
-    max_it = 5000
+    max_it = 20000
     
     solver(omega, n, Re, H_FUNC = H_FUNC, tol = tol, residuo_it = residuo_it, max_it=max_it)
 
