@@ -29,7 +29,7 @@ def TDMAsolver(a, b, c, d):
 
     return xc
 
-def save_vtk(nome, dado, nx, ny, delete_folder=False):
+def save_vtk(nome, dado, nx, ny, delete_folder=False, data_name='data'):
     
     print(nome)
     if not os.path.exists(nome.split('/')[0]):
@@ -62,7 +62,7 @@ def save_vtk(nome, dado, nx, ny, delete_folder=False):
 
     texto.append("POINT_DATA " + str((nx)*(ny)) + "\n")
     texto.append("FIELD FieldData 1\n")
-    texto.append("psi 1 " + str((nx)*(ny)) + " double\n")
+    texto.append("" + data_name + " 1 " + str((nx)*(ny)) + " double\n")
     for jy in range(ny):
         for ix in range(nx):
                 texto.append(str(dado[ix, jy]) + " ")
@@ -87,10 +87,10 @@ def residuo_and_psi_w_max(w, psi, n, h, omega, Re, p, r):
                               + ((psi[r][i, j+1] - (2 * psi[r][i,j]) + psi[r][i, j-1])/(h**2))\
                               + w[p][i,j])
                               
-            residuo_w[i-1, j-1] = abs(((1/Re)*((w[p][i+1, j] - (2 * w[p][i,j]) + w[p][i-1, j])/(h**2)))\
-                              + ((1/Re)*((w[p][i, j+1] - (2 * w[p][i,j]) + w[p][i, j-1])/(h**2)))\
-                              - (((w[p][i, j+1] - w[p][i, j-1])/(2*h))*((w[p][i+1, j] - w[p][i-1, j])/(2*h)))\
-                              + (((w[p][i+1, j] - w[p][i-1, j])/(2*h))*((w[p][i, j+1] - w[p][i, j-1])/(2*h))))
+            residuo_w[i-1, j-1] = abs(((1/Re)*((w[p][i, j+1] - (2 * w[p][i,j]) + w[p][i, j-1])/(h**2)))\
+                              + ((1/Re)*((w[p][i+1, j] - (2 * w[p][i,j]) + w[p][i-1, j])/(h**2)))\
+                              - (((psi[r][i, j+1] - psi[r][i, j-1])/(2*h))*((w[p][i+1, j] - w[p][i-1, j])/(2*h)))\
+                              + (((psi[r][i+1, j] - psi[p][i-1, j])/(2*h))*((w[p][i, j+1] - w[p][i, j-1])/(2*h))))
     
             if psi[r][i, j] > max_psi:
                 
@@ -122,7 +122,7 @@ def solve_x_line(j, w, psi, omega, n, Re, h, dt, sigma, p, q, r, s, variable = '
             
             a.append(-sigma)
             
-            d.append( (dt/2*w[q][i,j])\
+            d.append( ((dt/2)*w[q][i,j])\
                      + ((1-(2*sigma))*psi[s][i,j])\
                      + (sigma*(psi[s][i, j+1] + psi[s][i, j-1])))
             
@@ -170,7 +170,7 @@ def solve_y_collum(i, w, psi, omega, n, Re, h, dt, sigma, p, q, r, s, variable =
             
             a.append(-sigma)
             
-            d.append( (dt/2*w[q][i,j])\
+            d.append( ((dt/2)*w[q][i,j])\
                      + ((1-(2*sigma))*psi[s][i,j])\
                      + (sigma*(psi[s][i+1, j] + psi[s][i-1, j])))
             
@@ -217,17 +217,16 @@ def solver(omega, n, Re, H_FUNC = lambda h: h**2, tol = 1e-6, residuo_it = 1, ma
     print('n: ' + str(n))
     print('h: ' + str(h))
     print('\n\n\n')
-    
-    x = np.linspace(omega[0], omega[-1], n)
-    y = np.linspace(omega[0], omega[-1], n)
-    
-    X, Y = np.meshgrid(x, y)
         
     #solucao inicial para vorticidade
     w = [np.zeros((n, n)), np.zeros((n, n))]
         
     #solucao inicial para funcao corrente
     psi = [np.zeros((n, n)), np.zeros((n, n))]
+
+#    #contorno em t = 0
+#    w[0][:, -1] =  - (2/h)
+#    w[1][:, -1] =  - (2/h)
 
     p, q, = 0, 1
     r, s, = 0, 1
@@ -277,12 +276,14 @@ def solver(omega, n, Re, H_FUNC = lambda h: h**2, tol = 1e-6, residuo_it = 1, ma
             print("---------------INTERAÇÃO ", it, "---------------", \
                   "\n\nresiduo: ", erro,\
                   "\nmax psi: ", max_psi,\
-                  "\nmax psi: ", max_w,\
+                  "\nmax w: ", max_w,\
                   "\nx_max: ", x_max,\
                   "\ny_max: ", y_max)
             
             save_vtk('resultados_cavidade/psi' + str(it) + '.vtk', psi[r], n, n,\
-                     delete_folder=it==0)
+                     delete_folder=it==0, data_name='psi')
+            save_vtk('resultados_cavidade/w' + str(it) + '.vtk', w[p], n, n,\
+                     delete_folder=it==0, data_name='w')
             
             print("\n---------------------------------------------\n\n\n\n\n");
             
@@ -300,9 +301,9 @@ def main():
     
     tol = 1e-6
     
-    residuo_it = 1
+    residuo_it = 25
     
-    max_it = 10000
+    max_it = 5000
     
     solver(omega, n, Re, H_FUNC = H_FUNC, tol = tol, residuo_it = residuo_it, max_it=max_it)
 
