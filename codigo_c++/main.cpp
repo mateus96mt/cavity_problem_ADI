@@ -1,12 +1,47 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <cmath>
 
 using namespace std;
+
+struct Result {
+    double maxPsi, maxW, xCoordMaxValue, yCoordMaxValue, maxResidue;
+};
 
 inline int pos(int i, int j, int t, int nx, int ny) { return (t * nx * ny) + (j * (nx)) + i; }
 
 void solveTriDiagonalMatrix(double *a, double *b, double *c, double *d, int n) {
+
+//    double *p;
+//    printf("\nVETORES RECEBIDOS PARA RESOLVER MATRIZ TRI-DIAGONAL:");
+//    for (int j = 0; j < 4; j++) {
+//        switch (j) {
+//            case 0:
+//                printf("\na: ");
+//                p = a;
+//                break;
+//            case 1:
+//                printf("\nb: ");
+//                p = b;
+//                break;
+//            case 2:
+//                printf("\nc: ");
+//                p = c;
+//                break;
+//            case 3:
+//                printf("\nd: ");
+//                p = d;
+//                break;
+//            default:
+//                break;
+//        }
+//        for (int i = 0; i < n; i++) {
+//            printf("%f, ", p[i]);
+//        }
+//    }
+//    printf("\n");
+
     n--;
     c[0] /= b[0];
     d[0] /= b[0];
@@ -23,9 +58,11 @@ void solveTriDiagonalMatrix(double *a, double *b, double *c, double *d, int n) {
     }
 }
 
-void saveVtk(char *nome, int nx, int ny, double *data, char *dataName, int t)///gera os arquivos vtk
-{
-    cout << "output file: " << nome << endl;
+void saveVtk(char *nome, int nx, int ny, double *data, char *dataName, int t, bool showLog = false) {
+    if (showLog) {
+        cout << "output file: " << nome << endl;
+    }
+
     ofstream arqvtk;
     int k;
     arqvtk.open(nome);
@@ -61,10 +98,6 @@ void saveVtk(char *nome, int nx, int ny, double *data, char *dataName, int t)///
     arqvtk << "\n";
     arqvtk.close();
 }
-
-struct Result {
-    double maxPsi, maxW, xCoordMaxValue, yCoordMaxValue, maxResidue;
-};
 
 Result overviewSolution(double *w, double *psi, int n, double h, double *omega, double Re, int p, int r) {
 
@@ -138,7 +171,9 @@ Result overviewSolution(double *w, double *psi, int n, double h, double *omega, 
 }
 
 void
-solveXLinePsi(int j, double *w, double *psi, int n, double dt, double sigma, int p, int r, int s) {
+calculatePsiX(int j, double *w, double *psi, int n, double dt, double sigma, int p, int r, int s) {
+
+//    printf("\nchamou calculatePsiX");
 
     double a[n - 2], b[n - 2], c[n - 2], d[n - 2];
 
@@ -146,36 +181,58 @@ solveXLinePsi(int j, double *w, double *psi, int n, double dt, double sigma, int
     c[n - 3] = 0.0;
     for (int i = 1; i < n - 1; i++) {
 
-        if (i > 0) {
-            a[i] = -sigma;
+        if (i > 1) {
+            a[i - 1] = -sigma;
         }
 
         if (i < n - 2) {
-            c[i] = -sigma;
+            c[i - 1] = -sigma;
         }
 
-        b[i] = 1.0 + (2.0 * sigma);
+        b[i - 1] = 1.0 + (2.0 * sigma);
 
-        d[i] = (
+        d[i - 1] = (
                 ((dt / 2.0) * w[pos(i, j, p, n, n)])
                 + ((1.0 - (2.0 * sigma)) * psi[pos(i, j, s, n, n)])
                 + (sigma * (psi[pos(i, j + 1, s, n, n)] + psi[pos(i, j - 1, s, n, n)]))
         );
 
+        if (isnan(a[i - 1]) || isnan(b[i - 1]) || isnan(c[i - 1]) || isnan(d[i - 1])) {
+            fprintf(stderr, "\nERRO NaN NA ETAPA 1 PSI: ");
+            if (isnan(a[i - 1])) {
+                fprintf(stderr, "a[%d],", i - 1);
+            }
+            if (isnan(b[i - 1])) {
+                fprintf(stderr, "b[%d],", i - 1);
+            }
+            if (isnan(c[i - 1])) {
+                fprintf(stderr, "c[%d],", i - 1);
+            }
+            if (isnan(d[i - 1])) {
+                fprintf(stderr, "d[%d],", i - 1);
+            }
+            fprintf(stderr, "\n");
+        }
+
     }
 
-    d[0] += (sigma * psi[pos(0, j, r, n, n)]);
-    d[n - 3] += (sigma * psi[pos(n - 1, j, r, n, n)]);
+//    d[0] += (sigma * psi[pos(0, j, r, n, n)]);
+//    d[n - 3] += (sigma * psi[pos(n - 1, j, r, n, n)]);
 
-    solveTriDiagonalMatrix(a, b, c, d, n);
+    solveTriDiagonalMatrix(a, b, c, d, n - 2);
 
     for (int i = 1; i < n - 1; i++) {
+        if (isnan(d[i - 1])) {
+            fprintf(stderr, "\nDEU ERRO DE NaN em d  ETAPA 1 psi ao resolver matriz tri-diagonal!: d[%d], ", i - 1);
+        }
         psi[pos(i, j, s, n, n)] = d[i - 1];
     }
 }
 
 void
-solveYColumnPsi(int i, double *w, double *psi, int n, double dt, double sigma, int p, int r, int s) {
+calculatePsiY(int i, double *w, double *psi, int n, double dt, double sigma, int p, int r, int s) {
+
+//    printf("\nchamou calculatePsiY");
 
     double a[n - 2], b[n - 2], c[n - 2], d[n - 2];
 
@@ -183,36 +240,58 @@ solveYColumnPsi(int i, double *w, double *psi, int n, double dt, double sigma, i
     c[n - 3] = 0.0;
     for (int j = 1; j < n - 1; j++) {
 
-        if (i > 0) {
-            a[i] = -sigma;
+        if (i > 1) {
+            a[i - 1] = -sigma;
         }
 
         if (i < n - 2) {
-            c[i] = -sigma;
+            c[i - 1] = -sigma;
         }
 
-        b[i] = 1.0 + (2.0 * sigma);
+        b[i - 1] = 1.0 + (2.0 * sigma);
 
-        d[i] = (
+        d[i - 1] = (
                 ((dt / 2.0) * w[pos(i, j, p, n, n)])
                 + ((1.0 - (2.0 * sigma)) * psi[pos(i, j, s, n, n)])
                 + (sigma * (psi[pos(i + 1, j, s, n, n)] + psi[pos(i - 1, j, s, n, n)]))
         );
 
+        if (isnan(a[i - 1]) || isnan(b[i - 1]) || isnan(c[i - 1]) || isnan(d[i - 1])) {
+            fprintf(stderr, "\nERRO NaN NA ETAPA 2 PSI: ");
+            if (isnan(a[i - 1])) {
+                fprintf(stderr, "a[%d],", i - 1);
+            }
+            if (isnan(b[i - 1])) {
+                fprintf(stderr, "b[%d],", i - 1);
+            }
+            if (isnan(c[i - 1])) {
+                fprintf(stderr, "c[%d],", i - 1);
+            }
+            if (isnan(d[i - 1])) {
+                fprintf(stderr, "d[%d],", i - 1);
+            }
+            fprintf(stderr, "\n");
+        }
+
     }
 
-    d[0] += (sigma * psi[pos(i, 0, r, n, n)]);
-    d[n - 3] += (sigma * psi[pos(i, n - 1, r, n, n)]);
+//    d[0] += (sigma * psi[pos(i, 0, r, n, n)]);
+//    d[n - 3] += (sigma * psi[pos(i, n - 1, r, n, n)]);
 
-    solveTriDiagonalMatrix(a, b, c, d, n);
+    solveTriDiagonalMatrix(a, b, c, d, n - 2);
 
     for (int j = 1; j < n - 1; j++) {
+        if (isnan(d[i - 1])) {
+            fprintf(stderr, "\nDEU ERRO DE NaN em d  ETAPA 1 psi ao resolver matriz tri-diagonal!: d[%d], ", i - 1);
+        }
         psi[pos(i, j, s, n, n)] = d[j - 1];
     }
 }
 
 void
-solveXLineW(int j, double *w, double *psi, int n, double Re, double h, double dt, double sigma, int p, int q, int r) {
+calculateWX(int j, double *w, double *psi, int n, double Re, double h, double dt, double sigma, int p, int q, int r) {
+
+//    printf("\nchamou calculateWX");
 
     double a[n - 2], b[n - 2], c[n - 2], d[n - 2];
     double px, py;
@@ -224,21 +303,38 @@ solveXLineW(int j, double *w, double *psi, int n, double Re, double h, double dt
         px = Re * ((psi[pos(i + 1, j, r, n, n)] - psi[pos(i - 1, j, r, n, n)]) / 4);
         py = Re * ((psi[pos(i, j + 1, r, n, n)] - psi[pos(i, j - 1, r, n, n)]) / 4);
 
-        if (i > 0) {
-            a[i] = -sigma * (py + 1.0);
+        if (i > 1) {
+            a[i - 1] = -sigma * (py + 1.0);
         }
 
         if (i < n - 2) {
-            c[i] = sigma * (py - 1.0);
+            c[i - 1] = sigma * (py - 1.0);
         }
 
-        b[i] = 1.0 + (2.0 * sigma);
+        b[i - 1] = 1.0 + (2.0 * sigma);
 
-        d[i] = (
+        d[i - 1] = (
                 ((1.0 - (2.0 * sigma)) * w[pos(i, j, q, n, n)])
                 + ((sigma * (px + 1.0)) * w[pos(i, j + 1, q, n, n)])
                 + (sigma * (1.0 - px) * (w[pos(i, j - 1, q, n, n)]))
         );
+
+        if (isnan(a[i - 1]) || isnan(b[i - 1]) || isnan(c[i - 1]) || isnan(d[i - 1])) {
+            fprintf(stderr, "\nERRO NaN NA ETAPA 1 W: ");
+            if (isnan(a[i - 1])) {
+                fprintf(stderr, "a[%d],", i - 1);
+            }
+            if (isnan(b[i - 1])) {
+                fprintf(stderr, "b[%d],", i - 1);
+            }
+            if (isnan(c[i - 1])) {
+                fprintf(stderr, "c[%d],", i - 1);
+            }
+            if (isnan(d[i - 1])) {
+                fprintf(stderr, "d[%d],", i - 1);
+            }
+            fprintf(stderr, "\n");
+        }
 
     }
 
@@ -248,15 +344,20 @@ solveXLineW(int j, double *w, double *psi, int n, double Re, double h, double dt
     py = Re * ((psi[pos(n - 1, j + 1, r, n, n)] - psi[pos(n - 1, j - 1, r, n, n)]) / 4);
     d[n - 3] -= ((sigma * (py - 1.0)) * w[pos(n - 1, j, p, n, n)]);
 
-    solveTriDiagonalMatrix(a, b, c, d, n);
+    solveTriDiagonalMatrix(a, b, c, d, n - 2);
 
     for (int i = 1; i < n - 1; i++) {
+        if (isnan(d[i - 1])) {
+            fprintf(stderr, "\nDEU ERRO DE NaN em d  ETAPA 1 W ao resolver matriz tri-diagonal!: d[%d], ", i - 1);
+        }
         w[pos(i, j, p, n, n)] = d[i - 1];
     }
 }
 
 void
-solveYColumnW(int i, double *w, double *psi, int n, double Re, double h, double dt, double sigma, int p, int q, int r) {
+calculateWY(int i, double *w, double *psi, int n, double Re, double h, double dt, double sigma, int p, int q, int r) {
+
+//    printf("\nchamou calculateWY");
 
     double a[n - 2], b[n - 2], c[n - 2], d[n - 2];
     double px, py;
@@ -268,21 +369,38 @@ solveYColumnW(int i, double *w, double *psi, int n, double Re, double h, double 
         px = Re * ((psi[pos(i + 1, j, r, n, n)] - psi[pos(i - 1, j, r, n, n)]) / 4);
         py = Re * ((psi[pos(i, j + 1, r, n, n)] - psi[pos(i, j - 1, r, n, n)]) / 4);
 
-        if (i > 0) {
-            a[i] = sigma * (px - 1.0);
+        if (i > 1) {
+            a[i - 1] = sigma * (px - 1.0);
         }
 
         if (i < n - 2) {
-            c[i] = -sigma * (px + 1.0);
+            c[i - 1] = -sigma * (px + 1.0);
         }
 
-        b[i] = 1.0 + (2.0 * sigma);
+        b[i - 1] = 1.0 + (2.0 * sigma);
 
-        d[i] = (
+        d[i - 1] = (
                 ((1.0 - (2.0 * sigma)) * w[pos(i, j, q, n, n)])
                 + ((sigma * (1.0 - py)) * w[pos(i + 1, j, q, n, n)])
                 + (sigma * (1.0 + py) * (w[pos(i - 1, j, q, n, n)]))
         );
+
+        if (isnan(a[i - 1]) || isnan(b[i - 1]) || isnan(c[i - 1]) || isnan(d[i - 1])) {
+            fprintf(stderr, "\nERRO NaN NA ETAPA 2 W: ");
+            if (isnan(a[i - 1])) {
+                fprintf(stderr, "a[%d],", i - 1);
+            }
+            if (isnan(b[i - 1])) {
+                fprintf(stderr, "b[%d],", i - 1);
+            }
+            if (isnan(c[i - 1])) {
+                fprintf(stderr, "c[%d],", i - 1);
+            }
+            if (isnan(d[i - 1])) {
+                fprintf(stderr, "d[%d],", i - 1);
+            }
+            fprintf(stderr, "\n");
+        }
 
     }
 
@@ -292,9 +410,12 @@ solveYColumnW(int i, double *w, double *psi, int n, double Re, double h, double 
     px = Re * ((psi[pos(i + 1, n - 1, r, n, n)] - psi[pos(i - 1, n - 1, r, n, n)]) / 4);
     d[n - 3] += ((sigma * (px + 1.0)) * w[pos(i, n - 1, q, n, n)]);
 
-    solveTriDiagonalMatrix(a, b, c, d, n);
+    solveTriDiagonalMatrix(a, b, c, d, n - 2);
 
     for (int j = 1; j < n - 1; j++) {
+        if (isnan(d[i - 1])) {
+            fprintf(stderr, "\nDEU ERRO DE NaN em d  ETAPA 2 W ao resolver matriz tri-diagonal!: d[%d], ", i - 1);
+        }
         w[pos(i, j, p, n, n)] = d[i - 1];
     }
 }
@@ -310,62 +431,76 @@ void solver(double *omega, int n, double Re, double tol = 1e-6, int generateData
     double *psi = new double[2 * n * n];
     double *w = new double[2 * n * n];
 
-    int p = 0, q = 1, r = 0, s = 1, it = 0, aux;
+    //initial condition
+    for (int i = 0; i < 2 * n * n; i++) {
+        psi[i] = 0.0;
+        w[i] = 0.0;
+    }
+
+    int p = 0, q = 1, r = 0, s = 1, it = 1, aux;
     double error = 999;
+
+    char *folderName = "data", fileNamePsi[100], fileNameW[100], *dataNamePsi = "psi", *dataNameW = "w";
+
+    sprintf(fileNamePsi, "%s/%s%d.vtk", folderName, dataNamePsi, 0);
+    sprintf(fileNameW, "%s/%s%d.vtk", folderName, dataNameW, 0);
+
+    saveVtk(fileNamePsi, n, n, psi, dataNamePsi, r);
+    saveVtk(fileNameW, n, n, w, dataNameW, r);
 
     while (error > tol && it <= maxIt) {
 
-        aux = p;
-        p = q;
-        q = aux;
+//        printf("\n---------------INTERAÇÃO %d---------------", it);
+
+        aux = r;
+        r = s;
+        s = aux;
         for (int j = 1; j < n - 1; j++) {
-            solveXLinePsi(j, w, psi, n, dt, sigma, p, r, s);
+            calculatePsiX(j, w, psi, n, dt, sigma, p, r, s);
         }
 
-        aux = p;
-        p = q;
-        q = aux;
+        aux = r;
+        r = s;
+        s = aux;
         for (int i = 1; i < n - 1; i++) {
-            solveYColumnPsi(i, w, psi, n, dt, sigma, p, r, s);
+            calculatePsiY(i, w, psi, n, dt, sigma, p, r, s);
         }
 
         //contour
-        for (int k = 0; k < n; k++) {
+//        for (int k = 0; k < n; k++) {
+//            //(i, 0):
+//            w[pos(k, 0, p, n, n)] = -2 * ((psi[pos(k, 1, r, n, n)]) / (h * h));
+//            w[pos(k, 0, q, n, n)] = -2 * ((psi[pos(k, 1, r, n, n)]) / (h * h));
+//
+//            //(I, j):
+//            w[pos(n - 1, k, p, n, n)] = -2 * ((psi[pos(n - 2, k, r, n, n)]) / (h * h));
+//            w[pos(n - 1, k, q, n, n)] = -2 * ((psi[pos(n - 2, k, r, n, n)]) / (h * h));
+//
+//            //(0, j):
+//            w[pos(0, k, p, n, n)] = -2 * ((psi[pos(1, k, r, n, n)]) / (h * h));
+//            w[pos(0, k, q, n, n)] = -2 * ((psi[pos(1, k, r, n, n)]) / (h * h));
+//
+//            //(i, 0):
+//            w[pos(k, n - 1, p, n, n)] = -2 * ((psi[pos(k, n - 2, r, n, n)]) / (h * h)) - (2 / h);
+//            w[pos(k, n - 1, q, n, n)] = -2 * ((psi[pos(k, n - 2, r, n, n)]) / (h * h)) - (2 / h);
+//        }
 
-            //contour (i, 0):
-            w[pos(k, 0, p, n, n)] = -2 * ((psi[pos(k, 1, r, n, n)]) / (h * h));
-            w[pos(k, 0, q, n, n)] = -2 * ((psi[pos(k, 1, r, n, n)]) / (h * h));
-
-            //contour (I, j):
-            w[pos(n - 1, k, p, n, n)] = -2 * ((psi[pos(n - 2, k, r, n, n)]) / (h * h));
-            w[pos(n - 1, k, q, n, n)] = -2 * ((psi[pos(n - 2, k, r, n, n)]) / (h * h));
-
-            //contour (0, j):
-            w[pos(0, k, p, n, n)] = -2 * ((psi[pos(1, k, r, n, n)]) / (h * h));
-            w[pos(0, k, q, n, n)] = -2 * ((psi[pos(1, k, r, n, n)]) / (h * h));
-
-            //contour (i, 0):
-            w[pos(k, n - 1, p, n, n)] = -2 * ((psi[pos(k, n - 2, r, n, n)]) / (h * h)) - (2 / h);
-            w[pos(k, n - 1, q, n, n)] = -2 * ((psi[pos(k, n - 2, r, n, n)]) / (h * h)) - (2 / h);
-
-        }
-
-        aux = r;
-        r = s;
-        s = aux;
+        aux = p;
+        p = q;
+        q = aux;
         for (int j = 1; j < n - 1; j++) {
-            solveXLineW(j, w, psi, n, Re, h, dt, sigma, p, q, r);
+            calculateWX(j, w, psi, n, Re, h, dt, sigma, p, q, r);
         }
 
-        aux = r;
-        r = s;
-        s = aux;
+        aux = p;
+        p = q;
+        q = aux;
         for (int i = 1; i < n - 1; i++) {
-            solveYColumnW(i, w, psi, n, Re, h, dt, sigma, p, q, r);
+            calculateWY(i, w, psi, n, Re, h, dt, sigma, p, q, r);
         }
 
         if (it % generateDataInterval == 0) {
-            char *folderName = "data", fileNamePsi[100], fileNameW[100], *dataNamePsi = "psi", *dataNameW = "w";
+
             sprintf(fileNamePsi, "%s/%s%d.vtk", folderName, dataNamePsi, it);
             sprintf(fileNameW, "%s/%s%d.vtk", folderName, dataNameW, it);
 
@@ -377,20 +512,29 @@ void solver(double *omega, int n, double Re, double tol = 1e-6, int generateData
             printf("\nx_max: %f", result.xCoordMaxValue);
             printf("\ny_max: %f\n", result.yCoordMaxValue);
             saveVtk(fileNamePsi, n, n, psi, dataNamePsi, r);
-            saveVtk(fileNameW, n, n, psi, dataNameW, r);
+            saveVtk(fileNameW, n, n, w, dataNameW, r);
             printf("\n---------------------------------------------\n\n\n\n\n");
         }
 
+//        printf("\n---------------------------------------------\n\n\n\n\n");
         it++;
 
     }
 
+    printf("\n\nn: %d", n);
+    printf("\n\nRe: %f", Re);
+    printf("\n\ntol: %f", tol);
+    printf("\n\ninterval: %d", generateDataInterval);
+    printf("\n\nmaxIt: %d", maxIt);
+    printf("\n\nh: %f", h);
+    printf("\n\ndt: %f", dt);
+    printf("\n\nsigma: %f", sigma);
 }
 
 int main() {
     double omega[2] = {0.0, 1.0};
 
-    int n = 32;
+    int n = 512;
 
     double Re = 1000.0;
 
