@@ -2,6 +2,7 @@
 #include <fstream>
 #include <vector>
 #include <cmath>
+#include <sys/stat.h>
 
 #define checkNaN
 
@@ -442,7 +443,7 @@ calculateWY(int i, double *w, double *psi, int n, double Re, double h, double dt
 }
 
 void solver(double *omega, int n, double Re, double h, double dt, double tol = 1e-6, int generateDataInterval = 1,
-            int maxIt = 100) {
+            int maxIt = 100, const char *folderName = "data") {
 
     double sigma = dt / (2 * (h * h));
 
@@ -458,7 +459,7 @@ void solver(double *omega, int n, double Re, double h, double dt, double tol = 1
     int p = 0, q = 1, r = 0, s = 1, it = 1, aux;
     double error = 999;
 
-    char *folderName = "data", fileNamePsi[100], fileNameW[100], *dataNamePsi = "psi", *dataNameW = "w";
+    char fileNamePsi[100], fileNameW[100], *dataNamePsi = "psi", *dataNameW = "w";
 
     sprintf(fileNamePsi, "%s/%s%d.vtk", folderName, dataNamePsi, 0);
     sprintf(fileNameW, "%s/%s%d.vtk", folderName, dataNameW, 0);
@@ -534,11 +535,19 @@ void solver(double *omega, int n, double Re, double h, double dt, double tol = 1
             saveVtk(fileNamePsi, n, n, psi, dataNamePsi, r);
             saveVtk(fileNameW, n, n, w, dataNameW, r);
             printf("\n---------------------------------------------\n\n\n\n\n");
+
+            error = result.maxResidue;
         }
 
 //        printf("\n---------------------------------------------\n\n\n\n\n");
         it++;
 
+    }
+
+    if (it < maxIt) {
+        printf("CONVERGIU EM %d INTERAÇÕES\n", it - 1);
+        printf("TOLERANCIA DE RESIDUO PARA CONVERGENCIA: %.20f\n", tol);
+        printf("RESIDUO FINAL OBTIDO APOS CONVERGIR:     %.20f\n", error);
     }
 
     printf("\n\nn: %d", n);
@@ -568,7 +577,13 @@ int main() {
 
     int maxIt = 100000;
 
-    solver(omega, n, Re, h, dt, tol, generateDataInterval, maxIt);
+    char outPutFolder[100];
+
+    sprintf(outPutFolder, "dados%dx%d", n, n);
+
+    mkdir(outPutFolder, 0777);
+
+    solver(omega, n, Re, h, dt, tol, generateDataInterval, maxIt, outPutFolder);
 
     return 0;
 }
