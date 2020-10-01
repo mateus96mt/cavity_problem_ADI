@@ -246,36 +246,36 @@ calculatePsiY(int i, double *w, double *psi, int n, double dt, double sigma, int
     c[n - 3] = 0.0;
     for (int j = 1; j < n - 1; j++) {
 
-        if (i > 1) {
-            a[i - 1] = -sigma;
+        if (j > 1) {
+            a[j - 1] = -sigma;
         }
 
-        if (i < n - 2) {
-            c[i - 1] = -sigma;
+        if (j < n - 2) {
+            c[j - 1] = -sigma;
         }
 
-        b[i - 1] = 1.0 + (2.0 * sigma);
+        b[j - 1] = 1.0 + (2.0 * sigma);
 
-        d[i - 1] = (
+        d[j - 1] = (
                 ((dt / 2.0) * w[pos(i, j, p, n, n)])
                 + ((1.0 - (2.0 * sigma)) * psi[pos(i, j, s, n, n)])
                 + (sigma * (psi[pos(i + 1, j, s, n, n)] + psi[pos(i - 1, j, s, n, n)]))
         );
 
 #ifdef checkNaN
-        if (isnan(a[i - 1]) || isnan(b[i - 1]) || isnan(c[i - 1]) || isnan(d[i - 1])) {
+        if (isnan(a[j - 1]) || isnan(b[j - 1]) || isnan(c[j - 1]) || isnan(d[j - 1])) {
             fprintf(stderr, "\nERRO NaN NA ETAPA 2 PSI: ");
-            if (isnan(a[i - 1])) {
-                fprintf(stderr, "a[%d],", i - 1);
+            if (isnan(a[j - 1])) {
+                fprintf(stderr, "a[%d],", j - 1);
             }
-            if (isnan(b[i - 1])) {
-                fprintf(stderr, "b[%d],", i - 1);
+            if (isnan(b[j - 1])) {
+                fprintf(stderr, "b[%d],", j - 1);
             }
-            if (isnan(c[i - 1])) {
-                fprintf(stderr, "c[%d],", i - 1);
+            if (isnan(c[j - 1])) {
+                fprintf(stderr, "c[%d],", j - 1);
             }
-            if (isnan(d[i - 1])) {
-                fprintf(stderr, "d[%d],", i - 1);
+            if (isnan(d[j - 1])) {
+                fprintf(stderr, "d[%d],", j - 1);
             }
             fprintf(stderr, "\n");
         }
@@ -291,8 +291,8 @@ calculatePsiY(int i, double *w, double *psi, int n, double dt, double sigma, int
 
     for (int j = 1; j < n - 1; j++) {
 #ifdef checkNaN
-        if (isnan(d[i - 1])) {
-            fprintf(stderr, "\nDEU ERRO DE NaN em d  ETAPA 1 psi ao resolver matriz tri-diagonal!: d[%d], ", i - 1);
+        if (isnan(d[j - 1])) {
+            fprintf(stderr, "\nDEU ERRO DE NaN em d  ETAPA 1 psi ao resolver matriz tri-diagonal!: d[%d], ", j - 1);
         }
 #endif
         psi[pos(i, j, s, n, n)] = d[j - 1];
@@ -385,36 +385,36 @@ calculateWY(int i, double *w, double *psi, int n, double Re, double h, double dt
         px = Re * ((psi[pos(i + 1, j, r, n, n)] - psi[pos(i - 1, j, r, n, n)]) / 4);
         py = Re * ((psi[pos(i, j + 1, r, n, n)] - psi[pos(i, j - 1, r, n, n)]) / 4);
 
-        if (i > 1) {
-            a[i - 1] = sigma * (px - 1.0);
+        if (j > 1) {
+            a[j - 1] = sigma * (px - 1.0);
         }
 
-        if (i < n - 2) {
-            c[i - 1] = -sigma * (px + 1.0);
+        if (j < n - 2) {
+            c[j - 1] = -sigma * (px + 1.0);
         }
 
-        b[i - 1] = 1.0 + (2.0 * sigma);
+        b[j - 1] = 1.0 + (2.0 * sigma);
 
-        d[i - 1] = (
+        d[j - 1] = (
                 ((1.0 - (2.0 * sigma)) * w[pos(i, j, q, n, n)])
                 + ((sigma * (1.0 - py)) * w[pos(i + 1, j, q, n, n)])
                 + (sigma * (1.0 + py) * (w[pos(i - 1, j, q, n, n)]))
         );
 
 #ifdef checkNaN
-        if (isnan(a[i - 1]) || isnan(b[i - 1]) || isnan(c[i - 1]) || isnan(d[i - 1])) {
+        if (isnan(a[j - 1]) || isnan(b[j - 1]) || isnan(c[j - 1]) || isnan(d[j - 1])) {
             fprintf(stderr, "\nERRO NaN NA ETAPA 2 W: ");
-            if (isnan(a[i - 1])) {
-                fprintf(stderr, "a[%d],", i - 1);
+            if (isnan(a[j - 1])) {
+                fprintf(stderr, "a[%d],", j - 1);
             }
-            if (isnan(b[i - 1])) {
-                fprintf(stderr, "b[%d],", i - 1);
+            if (isnan(b[j - 1])) {
+                fprintf(stderr, "b[%d],", j - 1);
             }
-            if (isnan(c[i - 1])) {
-                fprintf(stderr, "c[%d],", i - 1);
+            if (isnan(c[j - 1])) {
+                fprintf(stderr, "c[%d],", j - 1);
             }
-            if (isnan(d[i - 1])) {
-                fprintf(stderr, "d[%d],", i - 1);
+            if (isnan(d[j - 1])) {
+                fprintf(stderr, "d[%d],", j - 1);
             }
             fprintf(stderr, "\n");
         }
@@ -432,12 +432,12 @@ calculateWY(int i, double *w, double *psi, int n, double Re, double h, double dt
 
     for (int j = 1; j < n - 1; j++) {
 #ifdef checkNaN
-        if (isnan(d[i - 1])) {
-            fprintf(stderr, "\nDEU ERRO DE NaN em d  ETAPA 2 W ao resolver matriz tri-diagonal!: d[%d], ", i - 1);
+        if (isnan(d[j - 1])) {
+            fprintf(stderr, "\nDEU ERRO DE NaN em d  ETAPA 2 W ao resolver matriz tri-diagonal!: d[%d], ", j - 1);
         }
 #endif
 
-        w[pos(i, j, p, n, n)] = d[i - 1];
+        w[pos(i, j, p, n, n)] = d[j - 1];
     }
 }
 
@@ -554,7 +554,7 @@ void solver(double *omega, int n, double Re, double h, double dt, double tol = 1
 int main() {
     double omega[2] = {0.0, 1.0};
 
-    int n = 20;
+    int n = 32;
 
     double h = (omega[1] - omega[0]) / (n - 1);
 
@@ -566,7 +566,7 @@ int main() {
 
     int generateDataInterval = 25;
 
-    int maxIt = 1000;
+    int maxIt = 100000;
 
     solver(omega, n, Re, h, dt, tol, generateDataInterval, maxIt);
 
