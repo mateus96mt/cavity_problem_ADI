@@ -173,6 +173,23 @@ Result overviewSolution(double *w, double *psi, int n, double h, double *omega, 
     return result;
 }
 
+void saveOutPut(double *w, double *psi, int n, double h, double *omega, double Re, int p, int r, int it, double tol,
+                double error, char *nome) {
+    ofstream saida;
+    saida.open(nome);
+
+    Result result = overviewSolution(w, psi, n, h, omega, Re, p, r);
+    saida << "CONVERGIU EM " << it << " INTERAÇÕES" << endl;
+    saida << "TOLERANCIA DE RESIDUO PARA CONVERGENCIA: " << tol << endl;
+    saida << "RESIDUO FINAL OBTIDO APOS CONVERGIR:     " << error << endl;
+    saida << "\n\nresiduo: " << result.maxResidue;
+    saida << "\nmax psi: " << result.maxPsi;
+    saida << "\nmax w: " << result.maxW;
+    saida << "\nx_max: " << result.xCoordMaxValue;
+    saida << "\ny_max: " << result.yCoordMaxValue << endl;
+    saida.close();
+}
+
 void
 calculatePsiX(int j, double *w, double *psi, int n, double dt, double sigma, int p, int r, int s) {
 
@@ -548,6 +565,10 @@ void solver(double *omega, int n, double Re, double h, double dt, double tol = 1
         printf("CONVERGIU EM %d INTERAÇÕES\n", it - 1);
         printf("TOLERANCIA DE RESIDUO PARA CONVERGENCIA: %.20f\n", tol);
         printf("RESIDUO FINAL OBTIDO APOS CONVERGIR:     %.20f\n", error);
+        char nome[100];
+
+        sprintf(nome, "saida%dx%d.txt", n, n);
+        saveOutPut(w, psi, n, h, omega, Re, p, r, it - 1, tol, error, nome);
     }
 
     printf("\n\nn: %d", n);
@@ -563,11 +584,11 @@ void solver(double *omega, int n, double Re, double h, double dt, double tol = 1
 int main() {
     double omega[2] = {0.0, 1.0};
 
-    int n = 32;
+    int n = 256;
 
     double h = (omega[1] - omega[0]) / (n - 1);
 
-    double dt = (h * h) / 10;
+    double dt = (h * h);
 
     double Re = 1000.0;
 
