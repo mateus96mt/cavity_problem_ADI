@@ -139,14 +139,14 @@ Result overviewSolution(double *w, double *psi, int n, double h, double *omega, 
                 maxResidueW = residuePsi;
             }
 
-            if (psi[pos(i, j, r, n, n)] > maxPsi) {
+            if (abs(psi[pos(i, j, r, n, n)]) > maxPsi) {
                 maxPsi = abs(psi[pos(i, j, r, n, n)]);
                 i_max = i;
                 j_max = j;
             }
 
-            if (w[pos(i, j, r, n, n)] > maxW) {
-                maxW = abs(w[pos(i, j, r, n, n)]);
+            if (abs(w[pos(i, j, p, n, n)]) > maxW) {
+                maxW = abs(w[pos(i, j, p, n, n)]);
                 i_max = i;
                 j_max = j;
             }
@@ -233,6 +233,7 @@ calculatePsiX(int j, double *w, double *psi, int n, double dt, double sigma, int
                 fprintf(stderr, "d[%d],", i - 1);
             }
             fprintf(stderr, "\n");
+            exit(1);
         }
 #endif
 
@@ -247,6 +248,7 @@ calculatePsiX(int j, double *w, double *psi, int n, double dt, double sigma, int
 #ifdef checkNaN
         if (isnan(d[i - 1])) {
             fprintf(stderr, "\nDEU ERRO DE NaN em d  ETAPA 1 psi ao resolver matriz tri-diagonal!: d[%d], ", i - 1);
+            exit(1);
         }
 #endif
         psi[pos(i, j, s, n, n)] = d[i - 1];
@@ -296,6 +298,7 @@ calculatePsiY(int i, double *w, double *psi, int n, double dt, double sigma, int
                 fprintf(stderr, "d[%d],", j - 1);
             }
             fprintf(stderr, "\n");
+            exit(1);
         }
 #endif
 
@@ -311,6 +314,7 @@ calculatePsiY(int i, double *w, double *psi, int n, double dt, double sigma, int
 #ifdef checkNaN
         if (isnan(d[j - 1])) {
             fprintf(stderr, "\nDEU ERRO DE NaN em d  ETAPA 1 psi ao resolver matriz tri-diagonal!: d[%d], ", j - 1);
+            exit(1);
         }
 #endif
         psi[pos(i, j, s, n, n)] = d[j - 1];
@@ -364,6 +368,7 @@ calculateWX(int j, double *w, double *psi, int n, double Re, double h, double dt
                 fprintf(stderr, "d[%d],", i - 1);
             }
             fprintf(stderr, "\n");
+            exit(1);
         }
 #endif
 
@@ -382,6 +387,7 @@ calculateWX(int j, double *w, double *psi, int n, double Re, double h, double dt
 #ifdef checkNaN
         if (isnan(d[i - 1])) {
             fprintf(stderr, "\nDEU ERRO DE NaN em d  ETAPA 1 W ao resolver matriz tri-diagonal!: d[%d], ", i - 1);
+            exit(1);
         }
 #endif
         w[pos(i, j, p, n, n)] = d[i - 1];
@@ -435,6 +441,7 @@ calculateWY(int i, double *w, double *psi, int n, double Re, double h, double dt
                 fprintf(stderr, "d[%d],", j - 1);
             }
             fprintf(stderr, "\n");
+            exit(1);
         }
 #endif
 
@@ -452,6 +459,7 @@ calculateWY(int i, double *w, double *psi, int n, double Re, double h, double dt
 #ifdef checkNaN
         if (isnan(d[j - 1])) {
             fprintf(stderr, "\nDEU ERRO DE NaN em d  ETAPA 2 W ao resolver matriz tri-diagonal!: d[%d], ", j - 1);
+            exit(1);
         }
 #endif
 
@@ -460,7 +468,7 @@ calculateWY(int i, double *w, double *psi, int n, double Re, double h, double dt
 }
 
 void solver(double *omega, int n, double Re, double h, double dt, double tol = 1e-6, int generateDataInterval = 1,
-            int maxIt = 100, const char *folderName = "data") {
+            int maxIt = 100, const char *folderName = "data", const char *saidaNome = "saida%dx%d.txt") {
 
     double sigma = dt / (2 * (h * h));
 
@@ -567,7 +575,7 @@ void solver(double *omega, int n, double Re, double h, double dt, double tol = 1
         printf("RESIDUO FINAL OBTIDO APOS CONVERGIR:     %.20f\n", error);
         char nome[100];
 
-        sprintf(nome, "saida%dx%d.txt", n, n);
+        sprintf(nome, saidaNome, n, n);
         saveOutPut(w, psi, n, h, omega, Re, p, r, it - 1, tol, error, nome);
     }
 
@@ -584,27 +592,29 @@ void solver(double *omega, int n, double Re, double h, double dt, double tol = 1
 int main() {
     double omega[2] = {0.0, 1.0};
 
-    int n = 256;
+    int n = 32;
 
     double h = (omega[1] - omega[0]) / (n - 1);
 
-    double dt = (h * h);
+    double dt = (h * h) / 10;
 
     double Re = 1000.0;
 
     double tol = 1e-6;
 
-    int generateDataInterval = 25;
+    int generateDataInterval = 100;
 
-    int maxIt = 100000;
+    int maxIt = 1000000;
 
-    char outPutFolder[100];
+    char outPutFolder[100], saidaNome[100];
 
-    sprintf(outPutFolder, "dados%dx%d", n, n);
+    sprintf(outPutFolder, "dados_Re_%d_%dx%d", (int) Re, n, n);
+
+    sprintf(saidaNome, "saida_Re_%d_%dx%d.txt", (int) Re, n, n);
 
     mkdir(outPutFolder, 0777);
 
-    solver(omega, n, Re, h, dt, tol, generateDataInterval, maxIt, outPutFolder);
+    solver(omega, n, Re, h, dt, tol, generateDataInterval, maxIt, outPutFolder, saidaNome);
 
     return 0;
 }
