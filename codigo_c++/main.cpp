@@ -61,7 +61,7 @@ void solveTriDiagonalMatrix(double *a, double *b, double *c, double *d, int n) {
     }
 }
 
-void saveVtk(char *nome, int nx, int ny, double *data, char *dataName, int t, bool showLog = false) {
+void savevtk(char *nome, int nx, int ny, double *data, char *dataName, int t, bool showLog = false) {
     if (showLog) {
         cout << "output file: " << nome << endl;
     }
@@ -102,7 +102,40 @@ void saveVtk(char *nome, int nx, int ny, double *data, char *dataName, int t, bo
     arqvtk.close();
 }
 
-Result overviewSolution(double *w, double *psi, int n, double h, double *omega, double Re, int p, int r) {
+void saveXYcurvesInMiddle(char *nomeSaidaU, char *nomeSaidaV, int n, double *psi, double *omega, double h, int t) {
+    ofstream saidaU;
+    ofstream saidaV;
+
+    saidaU.open(nomeSaidaU);
+    saidaV.open(nomeSaidaV);
+
+    int xMiddle = (int) n / 2, yMiddle = (int) n / 2;
+
+    double u, v;
+    for (int k = 0; k < n; k++) {
+
+        if (k > 0 && k < n - 1) {
+            u = (psi[pos(xMiddle, k + 1, t, n, n)] - psi[pos(xMiddle, k - 1, t, n, n)]) / (2 * h);
+            v = -(psi[pos(k + 1, yMiddle, t, n, n)] - psi[pos(k - 1, yMiddle, t, n, n)]) / (2 * h);
+        } else {
+            if (k == 0) {
+                u = (psi[pos(xMiddle, k + 1, t, n, n)] - psi[pos(xMiddle, k, t, n, n)]) / (h);
+                v = -(psi[pos(k + 1, yMiddle, t, n, n)] - psi[pos(k, yMiddle, t, n, n)]) / (h);
+            } else {
+                u = (psi[pos(xMiddle, k, t, n, n)] - psi[pos(xMiddle, k - 1, t, n, n)]) / (h);
+                v = -(psi[pos(k, yMiddle, t, n, n)] - psi[pos(k - 1, yMiddle, t, n, n)]) / (h);
+            }
+        }
+
+        saidaU << omega[0] + k * h << " " << u << endl;
+        saidaV << omega[0] + k * h << " " << v << endl;
+    }
+
+    saidaU.close();
+    saidaV.close();
+}
+
+Result calculateResidueAndMax(double *w, double *psi, int n, double h, double *omega, double Re, int p, int r) {
 
     double maxResiduePsi = 0.0;
     double maxResidueW = 0.0;
@@ -145,11 +178,11 @@ Result overviewSolution(double *w, double *psi, int n, double h, double *omega, 
                 j_max = j;
             }
 
-            if (abs(w[pos(i, j, p, n, n)]) > maxW) {
-                maxW = abs(w[pos(i, j, p, n, n)]);
-                i_max = i;
-                j_max = j;
-            }
+//            if (abs(w[pos(i, j, p, n, n)]) > maxW) {
+//                maxW = abs(w[pos(i, j, p, n, n)]);
+//                i_max = i;
+//                j_max = j;
+//            }
         }
     }
 
@@ -178,7 +211,7 @@ void saveOutPut(double *w, double *psi, int n, double h, double *omega, double R
     ofstream saida;
     saida.open(nome);
 
-    Result result = overviewSolution(w, psi, n, h, omega, Re, p, r);
+    Result result = calculateResidueAndMax(w, psi, n, h, omega, Re, p, r);
     saida << "CONVERGIU EM " << it << " INTERAÇÕES" << endl;
     saida << "TOLERANCIA DE RESIDUO PARA CONVERGENCIA: " << tol << endl;
     saida << "RESIDUO FINAL OBTIDO APOS CONVERGIR:     " << error << endl;
@@ -468,7 +501,8 @@ calculateWY(int i, double *w, double *psi, int n, double Re, double h, double dt
 }
 
 void solver(double *omega, int n, double Re, double h, double dt, double tol = 1e-6, int generateDataInterval = 1,
-            int maxIt = 100, const char *folderName = "data", const char *saidaNome = "saida%dx%d.txt") {
+            int maxIt = 100, const char *folderName = "data", const char *saidaNome = "saidaGeral.txt",
+            const char *nomeSaidaU = "saidaU.txt", const char *nomeSaidaV = "saidaV.txt") {
 
     double sigma = dt / (2 * (h * h));
 
@@ -489,8 +523,8 @@ void solver(double *omega, int n, double Re, double h, double dt, double tol = 1
     sprintf(fileNamePsi, "%s/%s%d.vtk", folderName, dataNamePsi, 0);
     sprintf(fileNameW, "%s/%s%d.vtk", folderName, dataNameW, 0);
 
-    saveVtk(fileNamePsi, n, n, psi, dataNamePsi, r);
-    saveVtk(fileNameW, n, n, w, dataNameW, r);
+    savevtk(fileNamePsi, n, n, psi, dataNamePsi, r);
+    savevtk(fileNameW, n, n, w, dataNameW, r);
 
     while (error > tol && it <= maxIt) {
 
@@ -550,15 +584,15 @@ void solver(double *omega, int n, double Re, double h, double dt, double tol = 1
             sprintf(fileNamePsi, "%s/%s%d.vtk", folderName, dataNamePsi, it);
             sprintf(fileNameW, "%s/%s%d.vtk", folderName, dataNameW, it);
 
-            Result result = overviewSolution(w, psi, n, h, omega, Re, p, r);
+            Result result = calculateResidueAndMax(w, psi, n, h, omega, Re, p, r);
             printf("---------------INTERAÇÃO %d---------------", it);
             printf("\n\nresiduo: %.20f", result.maxResidue);
             printf("\nmax psi: %.20f", result.maxPsi);
             printf("\nmax w: %.20f", result.maxW);
             printf("\nx_max: %.20f", result.xCoordMaxValue);
             printf("\ny_max: %.20f\n", result.yCoordMaxValue);
-            saveVtk(fileNamePsi, n, n, psi, dataNamePsi, r);
-            saveVtk(fileNameW, n, n, w, dataNameW, r);
+            savevtk(fileNamePsi, n, n, psi, dataNamePsi, r);
+            savevtk(fileNameW, n, n, w, dataNameW, r);
             printf("\n---------------------------------------------\n\n\n\n\n");
 
             error = result.maxResidue;
@@ -573,10 +607,14 @@ void solver(double *omega, int n, double Re, double h, double dt, double tol = 1
         printf("CONVERGIU EM %d INTERAÇÕES\n", it - 1);
         printf("TOLERANCIA DE RESIDUO PARA CONVERGENCIA: %.20f\n", tol);
         printf("RESIDUO FINAL OBTIDO APOS CONVERGIR:     %.20f\n", error);
-        char nome[100];
+        char nomeSaidaGeral[100], saidaUNome[100], saidaVNome[100];
 
-        sprintf(nome, saidaNome, n, n);
-        saveOutPut(w, psi, n, h, omega, Re, p, r, it - 1, tol, error, nome);
+        sprintf(nomeSaidaGeral, saidaNome, n, n);
+        sprintf(saidaUNome, nomeSaidaU, n, n);
+        sprintf(saidaVNome, nomeSaidaV, n, n);
+
+        saveOutPut(w, psi, n, h, omega, Re, p, r, it - 1, tol, error, nomeSaidaGeral);
+        saveXYcurvesInMiddle(saidaUNome, saidaVNome, n, psi, omega, h, r);
     }
 
     printf("\n\nn: %d", n);
@@ -592,13 +630,13 @@ void solver(double *omega, int n, double Re, double h, double dt, double tol = 1
 int main() {
     double omega[2] = {0.0, 1.0};
 
-    int n = 32;
+    int n = 128;
 
     double h = (omega[1] - omega[0]) / (n - 1);
 
     double dt = (h * h) / 10;
 
-    double Re = 1000.0;
+    double Re = 3200.0;
 
     double tol = 1e-6;
 
@@ -606,15 +644,19 @@ int main() {
 
     int maxIt = 1000000;
 
-    char outPutFolder[100], saidaNome[100];
+    char outPutFolder[100], saidaNome[100], saidaU[100], saidaV[100];
 
     sprintf(outPutFolder, "dados_Re_%d_%dx%d", (int) Re, n, n);
 
-    sprintf(saidaNome, "saida_Re_%d_%dx%d.txt", (int) Re, n, n);
+    sprintf(saidaNome, "saida_GERAL_Re_%d_%dx%d.txt", (int) Re, n, n);
+
+    sprintf(saidaU, "saida_U_Re_%d_%dx%d.txt", (int) Re, n, n);
+
+    sprintf(saidaV, "saida_V_Re_%d_%dx%d.txt", (int) Re, n, n);
 
     mkdir(outPutFolder, 0777);
 
-    solver(omega, n, Re, h, dt, tol, generateDataInterval, maxIt, outPutFolder, saidaNome);
+    solver(omega, n, Re, h, dt, tol, generateDataInterval, maxIt, outPutFolder, saidaNome, saidaU, saidaV);
 
     return 0;
 }
